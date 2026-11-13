@@ -38,6 +38,14 @@ test("message_delta 已带 stop_reason、但 message_stop 前断流，不算完�
   assert.equal(r.finished, false);
 });
 
+test("CRLF 正好被切在两块之间，不会多切出一帧、丢掉 event 名", async () => {
+  async function* split() { yield "event: message_stop\r"; yield "\ndata: {\"type\":\"message_stop\"}\r\n\r\n"; }
+  const got = [];
+  for await (const f of frames(split())) got.push(f);
+  assert.equal(got.length, 1);
+  assert.equal(got[0].event, "message_stop");
+});
+
 test("CRLF 换行的流跟 LF 的解析结果一样", async () => {
   const a = await accumulate(fx("normal-stream.sse"));
   const b = await accumulate(fx("normal-stream-crlf.sse"));
@@ -160,6 +168,19 @@ test("连切三次，补课只带真正新增的那几条", async () => {
   assert.match(last, /\] 三/);
   assert.doesNotMatch(last, /\] 一/);
   assert.equal(log.messages.length, 8);
+});
+
+test("对方在这一轮进行中插进来的话，下一轮照样补到", async () => {
+  const log = new SharedLog();
+  const marks = new Watermarks();
+  // CC 正在回的时候，API 那边落了一条（比如一条主动推送）
+  await sendWithCatchup(log, marks, "cc", "嗨", async () => {
+    log.append("assistant", "api", "途中的推送");
+    return "回";
+  });
+  const cu = buildCatchup(log, marks, "cc");
+  assert.ok(cu?.text);
+  assert.match(cu.text, /途中的推送/);
 });
 
 test("超出预算时丢的是最旧的，并且说明丢了几条", () => {

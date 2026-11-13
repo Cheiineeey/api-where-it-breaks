@@ -65,9 +65,10 @@ export async function sendWithCatchup(log, marks, provider, userText, deliver) {
   const reply = await deliver(parts.join("\n")); // 抛错 = 没送达，水位不动，下次重补
   if (cu) marks.set(provider, cu.through);
 
-  // 当前这句和回复也落共享库，标上来源；然后水位跟上，免得下一轮把它自己的话补回去
+  // 当前这句和回复也落共享库，标上来源。水位不跟着推到这两条：
+  // deliver 期间对方可能插进来新消息（比如一条主动推送），推过去就把它跳了。
+  // 自己的话下一轮会被 origin 过滤掉，不需要靠水位挡。
   log.append("user", provider, userText);
-  const r = log.append("assistant", provider, reply);
-  marks.set(provider, r.id);
+  log.append("assistant", provider, reply);
   return reply;
 }
