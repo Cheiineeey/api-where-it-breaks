@@ -1,0 +1,12 @@
+{"t": 310, "event": "message_start", "data": {"type": "message_start", "message": {"id": "msg_01Fixture", "usage": {"input_tokens": 20, "output_tokens": 1}}}}
+{"t": 320, "event": "content_block_start", "data": {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}}
+{"t": 4200, "event": "content_block_delta", "data": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "雨停了，"}}}
+{"t": 4206, "event": "content_block_delta", "data": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "街道"}}}
+{"t": 4212, "event": "content_block_delta", "data": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "还湿着，"}}}
+{"t": 4218, "event": "content_block_delta", "data": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "路灯"}}}
+{"t": 4224, "event": "content_block_delta", "data": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "把水洼"}}}
+{"t": 4230, "event": "content_block_delta", "data": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "照成一片"}}}
+{"t": 4236, "event": "content_block_delta", "data": {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "碎金。"}}}
+{"t": 4245, "event": "content_block_stop", "data": {"type": "content_block_stop", "index": 0}}
+{"t": 4250, "event": "message_delta", "data": {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 40}}}
+{"t": 4252, "event": "message_stop", "data": {"type": "message_stop"}}

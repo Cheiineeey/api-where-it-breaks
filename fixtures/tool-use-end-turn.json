@@ -1,0 +1,12 @@
+{
+  "_note": "兼容层返回了完整 tool_use 块，stop_reason 却写 end_turn（guide §4.2）。只信 stop_reason 的循环会漏执行。",
+  "id": "msg_relay_7f3a",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {"type": "text", "text": "我查一下。"},
+    {"type": "tool_use", "id": "toolu_01B", "name": "get_weather", "input": {"city": "London"}}
+  ],
+  "stop_reason": "end_turn",
+  "usage": {"input_tokens": 310, "output_tokens": 40}
+}

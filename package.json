@@ -1,0 +1,15 @@
+{
+  "name": "api-where-it-breaks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Where LLM API integrations actually break: auth headers, fake streaming, tool loops, prompt cache, and handing one conversation between Claude Code and the API.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --env-file=.env tools/api-check.mjs",
+    "check:stream": "node --env-file=.env tools/stream-check.mjs",
+    "check:tools": "node --env-file=.env tools/tool-check.mjs"
+  },
+  "license": "SEE LICENSE IN LICENSING.md"
+}
