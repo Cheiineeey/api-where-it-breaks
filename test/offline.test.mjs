@@ -29,6 +29,15 @@ test("网络把 SSE 帧切成碎块也能拼回同样的文字", async () => {
   }
 });
 
+test("message_delta 已带 stop_reason、但 message_stop 前断流，不算完成", async () => {
+  const full = fx("normal-stream.sse");
+  const cut = full.slice(0, full.indexOf("event: message_stop"));
+  assert.equal((await accumulate(full)).finished, true);
+  const r = await accumulate(cut);
+  assert.equal(r.message.stop_reason, "end_turn");
+  assert.equal(r.finished, false);
+});
+
 test("CRLF 换行的流跟 LF 的解析结果一样", async () => {
   const a = await accumulate(fx("normal-stream.sse"));
   const b = await accumulate(fx("normal-stream-crlf.sse"));
@@ -89,6 +98,11 @@ const jsonl = (name) => fx(name).split("\n").filter(Boolean).map((l) => JSON.par
 
 test("所有文字挤在最后一瞬间到达，判为假流式", () => {
   assert.equal(streamVerdict(jsonl("fake-stream.jsonl")).verdict, "fake_stream");
+});
+
+test("等了很久后所有事件一起到达，判为假流式而不是真流式", () => {
+  const ev = jsonl("real-stream.jsonl").map((e) => ({ ...e, t: 4000 }));
+  assert.equal(streamVerdict(ev).verdict, "fake_stream");
 });
 
 test("文字陆续到达，判为真流式", () => {

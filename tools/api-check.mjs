@@ -58,8 +58,6 @@ if (!cfg.model) {
     else if (!text) add("request", "warn", `没有 text 块，stop_reason=${m.stop_reason}`);
     else add("request", "ok", `回答「${text.slice(0, 40)}」，stop_reason=${m.stop_reason}`);
     if (!m.usage || m.usage.input_tokens == null) add("usage", "warn", "响应里没有 usage.input_tokens —— 缺失不要渲染成 0");
-    // [倒推] 官方 Messages API 的 id 目前形如 msg_01…（base62）；别的形状说明中间层自己生成了响应
-    if (m.id && !/^msg_01/.test(m.id)) add("id", "info", `message id 是 ${m.id}，不是官方 msg_01… 的形状 —— 响应可能经过中间层改写或重新生成`);
   }
 }
 

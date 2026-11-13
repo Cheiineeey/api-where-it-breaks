@@ -1,5 +1,5 @@
 # 被下面几个脚本 source。按 guide §1.1.1 选请求头：
-# 直连官方用 x-api-key，多数中转站用 Bearer。
+# 官方 Bearer 和 x-api-key 都收；中转站按站方规则。
 set -euo pipefail
 : "${API_BASE:=https://api.anthropic.com}"
 : "${API_KEY:?缺少 API_KEY}"

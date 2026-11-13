@@ -38,7 +38,7 @@ const r = acc.result();
 
 console.log("\n");
 if (r.errors.length) console.error("流里出现了 error 事件（HTTP 仍是 200）：", r.errors);
-if (!r.finished) console.error("没有收到 stop_reason —— 流被截断了，不要当作正常结束");
+if (!r.finished) console.error("没有收到 message_stop —— 流被截断了，不要当作正常结束");
 console.log("stop_reason：", r.message.stop_reason);
 console.log("首字：", firstText ? `${Math.round(firstText - t0)}ms` : "没有文字", "／ 总计：", `${Math.round(total)}ms`);
 console.log("usage（开头）：", r.usageStart);

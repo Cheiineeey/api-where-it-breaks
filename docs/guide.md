@@ -62,23 +62,23 @@ API_VERSION    官方当前示例为 2026-10-21；中转站可能只兼容旧版
 
 官方当前版本要求请求带 `anthropic-version`。新 SDK 会自动处理；手写 HTTP 请求时必须自己带上。
 
-### 1.1.1 key 放在哪个请求头：官方和中转站不一样
+### 1.1.1 key 放在哪个请求头
 
 这是新手第一个 401 的来源。
 
 | 你连的是 | key 放在 |
 |---|---|
-| 官方 API，用控制台发的 API key | `x-api-key: $API_KEY` |
+| 官方 API，用控制台发的 API key | 新版文档推荐 `Authorization: Bearer $API_KEY`；`x-api-key: $API_KEY` 仍兼容 |
 | 官方 API，用 OAuth 登录拿到的临时 token | `Authorization: Bearer $TOKEN`，另加 `anthropic-beta: oauth-2025-04-20` |
 | 大多数中转站 | 通常是 `Authorization: Bearer $API_KEY`，以站方文档为准 |
 
-把官方 API key 放进 `Authorization: Bearer` 直连官方，会被拒。反过来，很多中转站只认 Bearer。下文示例统一写成 `$AUTH_HEADER`，按上表二选一：
+官方新版文档把 `Authorization: Bearer` 列为推荐写法，`x-api-key` 作为旧写法继续兼容，两种直连官方都能用。中转站则按站方规则：很多只认 Bearer，也有只认 `x-api-key` 的。下文示例统一写成 `$AUTH_HEADER`，按上表二选一：
 
 ```bash
-# 直连官方
-AUTH_HEADER="x-api-key: $API_KEY"
-# 中转站（多数）
+# 官方推荐 / 多数中转站
 AUTH_HEADER="Authorization: Bearer $API_KEY"
+# 官方兼容的旧写法 / 只认它的中转站
+AUTH_HEADER="x-api-key: $API_KEY"
 ```
 
 官方 SDK 默认用 `x-api-key`；把 SDK 的 `base_url` 指向中转站时，如果站方只认 Bearer，要改用 SDK 的 auth token 参数（如 `ANTHROPIC_AUTH_TOKEN`），而不是 `ANTHROPIC_API_KEY`。
@@ -137,7 +137,7 @@ curl "$API_BASE/v1/messages" \
 const base = process.env.API_BASE || "https://api.anthropic.com";
 const key = process.env.API_KEY;
 const model = process.env.MODEL;
-// 直连官方用 x-api-key；多数中转站用 Bearer（见 1.1.1）
+// 官方两种都收；中转站按站方规则（见 1.1.1）
 const useBearer = process.env.AUTH_STYLE === "bearer";
 
 if (!key || !model) throw new Error("缺少 API_KEY 或 MODEL");
@@ -839,7 +839,7 @@ CREATE TABLE provider_sync_state (
 3. 按原顺序构造一个 catch-up 块
 4. catch-up 与当前用户原话分区
 5. 成功写入 CC 后，原子推进水位
-6. 失败时不推进，下次可安全重试
+6. 失败时不推进：水位不会丢；但如果写入其实成功、只是响应不明（超时、断线），下次会重复补一遍
 ```
 
 示意：
@@ -1132,7 +1132,7 @@ spawned.on("exit", () => {
 
 ### 直连官方 401，换中转站就好了（或反过来）
 
-key 放错了请求头。官方 API key 用 `x-api-key`，多数中转站用 `Authorization: Bearer`（见 1.1.1）。
+多半是 key 放错了请求头。官方 `Authorization: Bearer` 和 `x-api-key` 都收；中转站往往只认其中一种，按站方规则来（见 1.1.1）。
 
 ### 缓存标记加了，`cache_creation_input_tokens` 永远是 0
 
