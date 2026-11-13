@@ -481,6 +481,43 @@ if (calls.length === 0) break;
 
 读取工具不能这样省，因为模型必须看到返回结果才能回答。
 
+### 4.6 要参数一定合法：`strict: true`
+
+模型给的参数大多数时候是对的，但"大多数"不够。在工具定义上加 `strict: true`（和 `name`、`input_schema` 平级，不是放在 `tool_choice` 里），API 会保证 `tool_use.input` 严格符合 schema：
+
+```json
+{
+  "name": "get_weather",
+  "description": "查询指定城市的当前天气。",
+  "strict": true,
+  "input_schema": {
+    "type": "object",
+    "properties": {"city": {"type": "string"}},
+    "required": ["city"],
+    "additionalProperties": false
+  }
+}
+```
+
+schema 必须写 `required` 和 `"additionalProperties": false`。新模型上强制调用（`tool_choice: any` / 指定工具）会直接 400（见 1.6），以前靠强制调用拿合法参数的，现在改成 `auto` + `strict: true` + 在提示词里点名该用哪个工具。`auto` 不保证一定调用，所以还要检查这一轮到底调没调。
+
+`strict` 管的是"参数长什么样"，不管"参数对不对"：城市名合法不代表城市存在。4.4 的本地校验照样要做。
+
+### 4.7 一次叫好几个工具：结果放在同一条消息里
+
+模型默认可以在一条回复里提出多个工具调用（"伦敦和新加坡各多少度"就会一次叫两个）。全部执行完，把**所有** `tool_result` 放进**同一条** user 消息再发回去：
+
+```json
+{"role": "user", "content": [
+  {"type": "tool_result", "tool_use_id": "toolu_a", "content": "{\"temperature_c\":12}"},
+  {"type": "tool_result", "tool_use_id": "toolu_b", "content": "{\"temperature_c\":31}"}
+]}
+```
+
+拆成两条 user 消息分开回，请求不会报错，但官方说明这会让模型慢慢不再并行调用——之后每个工具都多花一个来回。某个工具失败了，也要回一条 `is_error: true` 的结果，不能直接丢掉，否则下一轮会因为 ID 对不上被拒。
+
+真要求一次只调一个，在 `tool_choice` 里加 `"disable_parallel_tool_use": true`。仓库的 `examples/node-tool-loop/` 就是按这个形状写的。
+
 ---
 
 ## 5. 错误、重试与幂等
@@ -688,6 +725,58 @@ tools → system → messages
 → 再看前缀指纹
 → 最后才打最多两发付费探针
 ```
+
+### 7.5 工具太多：先收起来，用到再拿 [按官方文档 2026-11 核对，未实测]
+
+每个工具的名字、描述和 schema 每轮都算输入 token，而且排在整个前缀的最前面。工具一多，光定义就能吃掉上万 token；官方还提到，可用工具超过三五十个之后，模型挑对工具的准确率也会往下掉。
+
+**工具搜索（tool search）**：把所有工具照常放进 `tools`，不常用的标上 `"defer_loading": true`，再加一个搜索工具。模型一开始只看得到搜索工具和没标 defer 的那几个，需要时自己搜，搜到的定义才加载进上下文：
+
+```json
+"tools": [
+  {"type": "tool_search_tool_bm25_20251119", "name": "tool_search_tool_bm25"},
+  {"name": "get_weather", "description": "…", "input_schema": {…}},
+  {"name": "save_letter", "description": "…", "input_schema": {…}, "defer_loading": true},
+  {"name": "search_memories", "description": "…", "input_schema": {…}, "defer_loading": true}
+]
+```
+
+几条要注意的：
+
+- 被收起来的工具**还是要每次都发**完整定义——`defer_loading` 管的是"进不进上下文"，不是"发不发"。API 要靠这份列表去搜、去展开。
+- 至少留一个不 defer 的（通常就是搜索工具本身）；全部 defer 直接 400。最常用的三五个也别收，免得每次都先搜一轮。
+- 两种搜索：`bm25` 让模型用自然语言搜，`regex` 让模型写正则。名字和描述里多放用户会说的关键词，搜得更准。
+- 搜到的工具是"追加"进对话的，不替换前面的内容，**缓存前缀不受影响**。但标了 `defer_loading` 的工具不能再挂 `cache_control`（400），断点要放在没 defer 的工具上。
+- 模型那次搜索在响应里是 `server_tool_use` + `tool_search_tool_result` 两个块：原样留在历史里发回去，**不要**给 `srvtoolu_…` 回 `tool_result`，会被拒。
+- 不到十个工具、每轮都要用到的，不值得开。
+
+**按模式开关工具**（beta `mid-conversation-tool-changes-2026-07-01`，只在部分新模型上）：工具搜索是"模型自己找"；如果是你的程序知道"现在进了写信模式，只需要这三个"，可以在 `messages` 里追加一条 system 消息，用 `tool_addition` / `tool_removal` 开关工具。要加的工具同样得事先以 `defer_loading: true` 声明。直接改 `tools` 数组会让整个缓存失效，这个办法不会。
+
+中转站不一定支持这些：工具搜索是服务端工具，按模式开关还要 beta 头。先用一发小请求确认它认，再往生产里放。
+
+### 7.6 旧的工具结果：清掉，但要清得值 [按官方文档 2026-11 核对，未实测]
+
+长对话里最占地方的往往不是聊天，而是很多轮以前的工具回执——搜出来的长文本、读过的文件。它们每轮都被重新读一遍、重新计费。
+
+上下文编辑（beta `context-management-2025-06-27`）可以让 API 在服务端把最旧的工具结果换成一句占位说明：
+
+```json
+"context_management": {
+  "edits": [{
+    "type": "clear_tool_uses_20250919",
+    "trigger": {"type": "input_tokens", "value": 30000},
+    "keep": {"type": "tool_uses", "value": 3},
+    "clear_at_least": {"type": "input_tokens", "value": 5000},
+    "exclude_tools": ["search_memories"]
+  }]
+}
+```
+
+`trigger` 是上下文超过多少开始清（默认 10 万 token），`keep` 是保留最近几次工具调用（默认 3 次），`exclude_tools` 列出永远不清的工具。
+
+**最要紧的一条：清一次，缓存就断一次。**被清掉的位置之后的前缀全部要重新写缓存。`clear_at_least` 就是为这个存在的——清不到这么多就干脆不清，免得为省几百 token 打掉一整段缓存。和 7.0 的 TTL 一起算账：缓存命中好的长对话，清得太勤反而更贵。
+
+你自己存的历史不会被改，编辑只发生在服务端那一份上；响应里的 `context_management.applied_edits` 会告诉你这次清了几个、省了多少 token。
 
 ---
 
@@ -1134,6 +1223,10 @@ spawned.on("exit", () => {
 ### 直连官方 401，换中转站就好了（或反过来）
 
 多半是 key 放错了请求头。官方 `Authorization: Bearer` 和 `x-api-key` 都收；中转站往往只认其中一种，按站方规则来（见 1.1.1）。
+
+### 工具一多，每轮又慢又贵
+
+先数工具定义一共多少 token。超过一万或者工具超过十个，考虑把不常用的收起来（7.5）；长对话里旧工具结果堆得多，考虑有节制地清（7.6）。
 
 ### 缓存标记加了，`cache_creation_input_tokens` 永远是 0
 
