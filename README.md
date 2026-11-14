@@ -29,11 +29,12 @@ npm test
 | 你现在 | 读 |
 |---|---|
 | 从没碰过 API | [guide §0.5](docs/guide.md#05-从没碰过-api先认识四个词)，然后 §1 |
+| 用惯了 CC，想换到 API | [guide §0.6](docs/guide.md#06-从-cc-换过来先看-cc-替你做了什么)：CC 替你做了什么、人格怎么搬、挑客户端、月账怎么估 |
 | 第一发请求就 401 / 400 / 空回答 | §1.1.1、§1.3.1、§1.6，或直接 §12 按症状查 |
 | 要接流式 | §3 + `examples/node-streaming` + `tools/stream-check.mjs` |
 | 要接工具 | §4 + `examples/node-tool-loop` + `tools/tool-check.mjs` |
-| 账单太高、缓存不命中 | §6、§7，以及 [relay-cache-where-it-breaks](https://github.com/Cheiineeey/relay-cache-where-it-breaks) |
-| 要做长期运行的聊天产品 | §5、§8、§11 |
+| 账单太高、缓存不命中 | §6（尤其 §6.4 一轮到底多大）、§7，以及 [relay-cache-where-it-breaks](https://github.com/Cheiineeey/relay-cache-where-it-breaks) |
+| 要做长期运行的聊天产品 | §5、§8、§11；前情摘要和日记见 §9.10.1 |
 | 要让 CC 和 API 两条线共用一段对话 | §9、§10 + `examples/dual-provider-skeleton` |
 
 全文在 [docs/guide.md](docs/guide.md)。
